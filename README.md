@@ -68,27 +68,20 @@ Use the **Mod** dropdown in the left panel to switch between:
 ## Project Structure
 
 ```
-src/main/java/com/codeflow/
-├── App.java                    # Entry point
+docs/                           # Project notes (roadmap, context) — not shipped in JAR
+examples/README.md              # Points to bundled demo sources under resources/
+src/main/java/com/codeflow/     # Application source
+├── App.java
+├── examples/
+│   └── ExampleSources.java     # Loads demo text from classpath
 ├── model/
-│   ├── CodeClass.java          # Class data model
-│   ├── CodeMethod.java         # Method data model
-│   ├── FlowNode.java           # Flowchart node (supports branching tree)
-│   ├── MethodCall.java         # Method call reference
-│   └── DependencyGraph.java    # Class dependency graph builder
 ├── parser/
-│   ├── JavaSourceParser.java   # Regex-based Java code parser
-│   └── FileWatcher.java        # File system change monitor
-├── sample/
-│   └── SampleCode.java         # Sample e-commerce code
 └── ui/
-    ├── MainFrame.java          # Main window with split pane
-    ├── CodeEditorPanel.java    # Right panel: code editor
-    ├── DiagramPanel.java       # Left panel: diagram host
-    ├── FlowchartRenderer.java  # Branching flowchart drawing
-    ├── DependencyRenderer.java # Class dependency drawing
-    └── OverviewRenderer.java   # Architecture overview drawing
+src/main/resources/examples/    # Bundled sample Java text (default editor content)
+└── ecommerce-cart.java
 ```
+
+See `docs/PROJE_BAGLAMI.md` (Turkish) for a fuller file map.
 
 ## How It Works
 

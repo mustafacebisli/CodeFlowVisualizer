@@ -1,8 +1,3 @@
-package com.codeflow.sample;
-
-public class SampleCode {
-
-    public static final String ECOMMERCE_CART = """
 class CartManager {
     private List<CartItem> items;
     private DiscountService discountService;
@@ -98,6 +93,33 @@ class CartManager {
         }
         return null;
     }
+
+    // Ornek: klasik for + switch (akis diyagraminda gorunur).
+    public String auditCart() {
+        String tier;
+        switch (items.size()) {
+            case 0:
+                tier = "bos";
+                break;
+            case 1:
+                tier = "tek";
+                break;
+            case 2:
+            case 3:
+                tier = "az";
+                break;
+            default:
+                tier = "cok";
+                break;
+        }
+        int heavy = 0;
+        for (int i = 0; i < items.size(); i++) {
+            if (items.get(i).getQuantity() >= 10) {
+                heavy++;
+            }
+        }
+        return tier + ":" + heavy;
+    }
 }
 
 class DiscountService {
@@ -155,6 +177,4 @@ class OrderProcessor {
         }
         return ProcessResult.success(trackingId);
     }
-}
-""";
 }

@@ -4,7 +4,9 @@ import javax.swing.*;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.BadLocationException;
 import java.awt.*;
+import java.util.regex.Pattern;
 
 public class CodeEditorPanel extends JPanel {
 
@@ -123,22 +125,54 @@ public class CodeEditorPanel extends JPanel {
             textArea.setCaretPosition(0);
             return;
         }
-        String code = textArea.getText();
-        String pattern = "class " + selected;
-        int idx = code.indexOf(pattern);
+        int idx = indexOfTypeDeclaration(selected);
         if (idx < 0) return;
+        scrollToOffset(idx);
+    }
 
+    /** Scrolls to a combined-buffer marker line {@code // === path/to/File.java ===}. */
+    public void scrollToFileMarker(String logicalPath) {
+        if (logicalPath == null || logicalPath.isBlank()) return;
+        String marker = "// === " + logicalPath + " ===";
+        int idx = textArea.getText().indexOf(marker);
+        if (idx < 0) return;
+        scrollToOffset(idx);
+    }
+
+    private int indexOfTypeDeclaration(String typeName) {
+        String code = textArea.getText();
+        Pattern p = Pattern.compile(
+                "\\b(class|interface|enum|record)\\s+" + Pattern.quote(typeName) + "\\b");
+        var m = p.matcher(code);
+        return m.find() ? m.start() : -1;
+    }
+
+    private void scrollToOffset(int idx) {
         textArea.setCaretPosition(idx);
         try {
             int line = textArea.getLineOfOffset(idx);
             int startOfLine = textArea.getLineStartOffset(line);
-            java.awt.Rectangle rect = textArea.modelToView(startOfLine);
+            Rectangle rect = textArea.modelToView(startOfLine);
             if (rect != null) {
                 rect.height = textArea.getVisibleRect().height;
                 textArea.scrollRectToVisible(rect);
             }
-        } catch (javax.swing.text.BadLocationException ignored) {}
+        } catch (BadLocationException ignored) {}
         textArea.requestFocusInWindow();
+    }
+
+    /** Selects a type in the dropdown; optionally scrolls the editor to its declaration. */
+    public void setSelectedClassByName(String className, boolean scrollToDeclaration) {
+        if (className == null) return;
+        suppressClassScroll = true;
+        for (int i = 0; i < classSelector.getItemCount(); i++) {
+            if (className.equals(classSelector.getItemAt(i))) {
+                classSelector.setSelectedIndex(i);
+                break;
+            }
+        }
+        suppressClassScroll = false;
+        if (scrollToDeclaration) scrollToSelectedClass();
     }
 
     private void scheduleChange() {

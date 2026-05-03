@@ -3,7 +3,7 @@ package com.codeflow.ui;
 import com.codeflow.model.CodeClass;
 import com.codeflow.parser.FileWatcher;
 import com.codeflow.parser.JavaSourceParser;
-import com.codeflow.sample.SampleCode;
+import com.codeflow.examples.ExampleSources;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -16,6 +16,7 @@ import java.util.List;
 
 public class MainFrame extends JFrame {
 
+    private final ProjectExplorerPanel explorerPanel;
     private final DiagramPanel diagramPanel;
     private final CodeEditorPanel editorPanel;
     private final JavaSourceParser parser;
@@ -32,8 +33,39 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         parser = new JavaSourceParser();
+        explorerPanel = new ProjectExplorerPanel();
         diagramPanel = new DiagramPanel();
         editorPanel = new CodeEditorPanel();
+
+        explorerPanel.setOnNodeSelected(data -> {
+            if (data.kind == ProjectExplorerPanel.NodeKind.FILE) {
+                editorPanel.scrollToFileMarker(data.sourceFile);
+            } else if (data.kind == ProjectExplorerPanel.NodeKind.TYPE) {
+                if (data.sourceFile != null && !data.sourceFile.isBlank()) {
+                    editorPanel.scrollToFileMarker(data.sourceFile);
+                }
+                diagramPanel.setSelectedClassByName(data.displayName);
+                editorPanel.setSelectedClassByName(data.displayName, true);
+            }
+        });
+        diagramPanel.setOnClassSelectionFromUser(() -> {
+            String n = diagramPanel.getSelectedClassName();
+            if (n != null) explorerPanel.highlightType(n);
+        });
+
+        JSplitPane innerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, diagramPanel, editorPanel);
+        innerSplit.setDividerLocation(560);
+        innerSplit.setDividerSize(4);
+        innerSplit.setResizeWeight(0.55);
+        innerSplit.setBorder(null);
+        innerSplit.setContinuousLayout(true);
+
+        JSplitPane outerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, explorerPanel, innerSplit);
+        outerSplit.setDividerLocation(220);
+        outerSplit.setDividerSize(4);
+        outerSplit.setResizeWeight(0.14);
+        outerSplit.setBorder(null);
+        outerSplit.setContinuousLayout(true);
 
         // Bottom toolbar with watch button
         JPanel bottomBar = new JPanel(new BorderLayout());
@@ -61,22 +93,14 @@ public class MainFrame extends JFrame {
         bottomBar.add(btnPanel, BorderLayout.WEST);
         bottomBar.add(watchStatusLabel, BorderLayout.EAST);
 
-        // Split pane
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, diagramPanel, editorPanel);
-        splitPane.setDividerLocation(560);
-        splitPane.setDividerSize(4);
-        splitPane.setResizeWeight(0.55);
-        splitPane.setBorder(null);
-        splitPane.setContinuousLayout(true);
-
-        getContentPane().add(splitPane, BorderLayout.CENTER);
+        getContentPane().add(outerSplit, BorderLayout.CENTER);
         getContentPane().add(bottomBar, BorderLayout.SOUTH);
 
-        editorPanel.setCode(SampleCode.ECOMMERCE_CART);
+        editorPanel.setCode(ExampleSources.loadDefaultCartDemo());
         editorPanel.setOnChange(this::reparseFromEditor);
 
-        setSize(1280, 800);
-        setMinimumSize(new Dimension(900, 600));
+        setSize(1320, 800);
+        setMinimumSize(new Dimension(980, 600));
         setLocationRelativeTo(null);
 
         reparseFromEditor();
@@ -84,12 +108,13 @@ public class MainFrame extends JFrame {
 
     private void reparseFromEditor() {
         String code = editorPanel.getCode();
-        List<CodeClass> classes = parser.parse(code);
+        List<CodeClass> classes = parser.parse(code, null);
         List<String> classNames = new ArrayList<>();
         for (CodeClass c : classes) classNames.add(c.getName());
         SwingUtilities.invokeLater(() -> {
             diagramPanel.updateData(classes);
             editorPanel.updateClassList(classNames);
+            explorerPanel.updateTree(watchedDirectory, classes);
         });
     }
 
@@ -124,9 +149,7 @@ public class MainFrame extends JFrame {
 
         currentWatcher = new FileWatcher(dir, changedPath -> {
             if (fileChangeDebounce != null) fileChangeDebounce.stop();
-            fileChangeDebounce = new Timer(800, e -> {
-                loadAllJavaFiles(dir);
-            });
+            fileChangeDebounce = new Timer(800, e -> loadAllJavaFiles(dir));
             fileChangeDebounce.setRepeats(false);
             fileChangeDebounce.start();
         });
@@ -149,36 +172,42 @@ public class MainFrame extends JFrame {
         watchStatusLabel.setText("Mod: Editorden oku");
         watchStatusLabel.setForeground(new Color(140, 140, 140));
         watchButton.setText("Klasor Izle...");
+        SwingUtilities.invokeLater(this::reparseFromEditor);
     }
 
     private void loadAllJavaFiles(Path dir) {
         try {
             StringBuilder allCode = new StringBuilder();
+            List<CodeClass> allClasses = new ArrayList<>();
+
             Files.walkFileTree(dir, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                     if (file.toString().endsWith(".java")) {
                         try {
                             String content = Files.readString(file);
-                            allCode.append("\n// === ").append(file.getFileName()).append(" ===\n");
+                            String logical = dir.relativize(file).toString().replace('\\', '/');
+                            allCode.append("\n// === ").append(logical).append(" ===\n");
                             allCode.append(content).append("\n");
+                            allClasses.addAll(parser.parseUnresolved(content, logical));
                         } catch (IOException ignored) {}
                     }
                     return FileVisitResult.CONTINUE;
                 }
             });
 
+            parser.resolveCrossFile(allClasses);
             String combined = allCode.toString();
-            List<CodeClass> classes = parser.parse(combined);
 
             List<String> classNames = new ArrayList<>();
-            for (CodeClass c : classes) classNames.add(c.getName());
+            for (CodeClass c : allClasses) classNames.add(c.getName());
 
             SwingUtilities.invokeLater(() -> {
                 editorPanel.setCode(combined);
                 editorPanel.updateClassList(classNames);
-                diagramPanel.updateData(classes);
-                watchStatusLabel.setText("Izleniyor: " + dir.getFileName() + " (" + classes.size() + " sinif)");
+                diagramPanel.updateData(allClasses);
+                explorerPanel.updateTree(dir, allClasses);
+                watchStatusLabel.setText("Izleniyor: " + dir.getFileName() + " (" + allClasses.size() + " sinif)");
             });
 
         } catch (IOException ex) {

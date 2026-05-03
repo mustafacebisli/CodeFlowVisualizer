@@ -26,10 +26,9 @@ public class OverviewRenderer extends JPanel {
         if (classes != null && !classes.isEmpty()) {
             int cols = Math.max(1, Math.min(classes.size(), 3));
             int rows = (int) Math.ceil((double) classes.size() / cols);
-            int maxMethodCount = classes.stream().mapToInt(c -> c.getMethods().size()).max().orElse(0);
-            int cardH = 60 + maxMethodCount * 20 + 40;
+            int maxCardH = classes.stream().mapToInt(this::calculateCardHeight).max().orElse(80);
             int totalW = cols * (CARD_W + CARD_GAP) + CARD_PAD * 2;
-            int totalH = rows * (cardH + CARD_GAP) + CARD_PAD * 2;
+            int totalH = rows * (maxCardH + CARD_GAP) + CARD_PAD * 2;
             setPreferredSize(new Dimension(totalW, totalH));
         }
         revalidate();
@@ -93,8 +92,24 @@ public class OverviewRenderer extends JPanel {
         String kindLabel = cc.getKind().name().charAt(0) + " ";
         g.drawString(kindLabel + cc.getName(), x + 10, y + 20);
 
-        // Fields
         int ty = y + 42;
+        if (cc.getKind() == CodeClass.Kind.ENUM && !cc.getEnumConstants().isEmpty()) {
+            g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 9));
+            g.setColor(new Color(140, 140, 150));
+            g.drawString("CONSTANTS", x + 10, ty);
+            ty += 14;
+            g.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 10));
+            for (String ec : cc.getEnumConstants()) {
+                g.setColor(new Color(234, 160, 0, 180));
+                g.fillOval(x + 10, ty - 7, 5, 5);
+                g.setColor(new Color(180, 180, 190));
+                g.drawString(ec, x + 20, ty);
+                ty += 16;
+            }
+            ty += 4;
+        }
+
+        // Fields
         if (!cc.getFields().isEmpty()) {
             g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 9));
             g.setColor(new Color(140, 140, 150));
@@ -134,6 +149,9 @@ public class OverviewRenderer extends JPanel {
 
     private int calculateCardHeight(CodeClass cc) {
         int h = 42;
+        if (cc.getKind() == CodeClass.Kind.ENUM && !cc.getEnumConstants().isEmpty()) {
+            h += 14 + cc.getEnumConstants().size() * 16 + 4;
+        }
         if (!cc.getFields().isEmpty()) h += 14 + cc.getFields().size() * 16 + 4;
         if (!cc.getMethods().isEmpty()) h += 14 + cc.getMethods().size() * 16;
         return h + 12;

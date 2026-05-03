@@ -78,6 +78,8 @@ public class DependencyRenderer extends JPanel {
             if (from == null || to == null) continue;
 
             boolean hl = edge.getSource().equals(selectedNode) || edge.getTarget().equals(selectedNode);
+            boolean inject = edge.getKind() == DependencyGraph.EdgeKind.INJECTION
+                    || edge.getKind() == DependencyGraph.EdgeKind.MIXED;
 
             double dx = to.x - from.x;
             double dy = to.y - from.y;
@@ -88,15 +90,28 @@ public class DependencyRenderer extends JPanel {
             int sx = from.x + (int)(dx * off), sy = from.y + (int)(dy * off);
             int ex = to.x - (int)(dx * off), ey = to.y - (int)(dy * off);
 
-            g2.setColor(hl ? new Color(234, 160, 0) : new Color(100, 100, 110, 130));
-            g2.setStroke(new BasicStroke(hl ? 2.5f : 1.5f));
+            Color lineColor;
+            if (hl) {
+                lineColor = inject ? new Color(56, 189, 248) : new Color(234, 160, 0);
+            } else {
+                lineColor = inject ? new Color(56, 189, 248, 140) : new Color(100, 100, 110, 130);
+            }
+            g2.setColor(lineColor);
+            if (inject) {
+                g2.setStroke(new BasicStroke(hl ? 2.5f : 1.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10,
+                        new float[]{5, 4}, 0));
+            } else {
+                g2.setStroke(new BasicStroke(hl ? 2.5f : 1.5f));
+            }
             g2.drawLine(sx, sy, ex, ey);
 
             drawArrowHead(g2, sx, sy, ex, ey, 8);
+            g2.setStroke(new BasicStroke(1.5f));
 
             String label = String.join(", ", edge.getMethods());
+            if (label.length() > 42) label = label.substring(0, 39) + "...";
             g2.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 10));
-            g2.setColor(hl ? new Color(234, 160, 0) : new Color(140, 140, 140));
+            g2.setColor(hl ? lineColor : new Color(140, 140, 140));
             int mx = (sx + ex) / 2, my = (sy + ey) / 2 - 8;
             FontMetrics fm = g2.getFontMetrics();
             g2.drawString(label, mx - fm.stringWidth(label) / 2, my);
