@@ -19,10 +19,6 @@ import java.util.stream.Stream;
  */
 public final class FlowComparisonService {
 
-    private static final String EXT_CBL = SourceExtensions.CBL;
-    private static final String EXT_COB = SourceExtensions.COB;
-    private static final String EXT_CPY = SourceExtensions.CPY;
-
     private final JavaProjectSources projectSources = new JavaProjectSources(new JavaSourceParser());
 
     public FlowComparisonResult compare(Path legacyDir, Path targetDir) throws IOException {
@@ -40,7 +36,7 @@ public final class FlowComparisonService {
         if (!Files.isDirectory(targetDir)) {
             warnings.add(MigrationCopy.missingDirectory(MigrationPaths.TARGET_DIR));
         }
-        return new FlowComparisonResult(cobolFiles, javaTypes.size(), javaTypes, warnings);
+        return new FlowComparisonResult(cobolFiles, javaTypes, warnings);
     }
 
     private int countCobolFiles(Path legacyDir) throws IOException {
@@ -50,7 +46,8 @@ public final class FlowComparisonService {
             for (Path p : walk.toList()) {
                 if (!Files.isRegularFile(p)) continue;
                 String name = p.getFileName().toString().toLowerCase();
-                if (name.endsWith(EXT_CBL) || name.endsWith(EXT_COB) || name.endsWith(EXT_CPY)) {
+                if (name.endsWith(SourceExtensions.CBL) || name.endsWith(SourceExtensions.COB)
+                        || name.endsWith(SourceExtensions.CPY)) {
                     n++;
                 }
             }
@@ -67,12 +64,8 @@ public final class FlowComparisonService {
 
     public record FlowComparisonResult(
             int cobolSourceFiles,
-            int javaTypeCount,
             List<CodeClass> javaTypes,
             List<String> warnings
     ) {
-        public int warningCount() {
-            return warnings.size();
-        }
     }
 }

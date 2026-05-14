@@ -220,7 +220,6 @@ public class MigrationDashboardPanel extends JPanel {
     private void showSelectedCase() {
         GoldenCase c = caseList.getSelectedValue();
         if (c == null) return;
-        MigrationWorkspaceState st = workspaceService.getLastState();
         String extra = "\n\n--- Secili case ---\n" + c.id() + " / " + c.program()
                 + " / " + c.status() + (c.message().isBlank() ? "" : " — " + c.message());
         detailArea.append(extra);
@@ -268,7 +267,6 @@ public class MigrationDashboardPanel extends JPanel {
             case OK -> AppTheme.OK_CHIP;
             case WARNING -> AppTheme.WARNING_CHIP;
             case ERROR -> AppTheme.ERROR_CHIP;
-            case RUNNING -> AppTheme.ACCENT_BLUE;
             case PENDING -> AppTheme.PENDING_CHIP;
         };
     }

@@ -2,7 +2,6 @@ package com.codeflow.migration.workspace;
 
 import com.codeflow.migration.MigrationCopy;
 import com.codeflow.migration.MigrationPaths;
-import com.codeflow.parser.SourceExtensions;
 import com.codeflow.migration.flow.FlowComparisonService;
 import com.codeflow.migration.golden.GoldenManifestLoader;
 import com.codeflow.migration.model.*;
@@ -26,11 +25,10 @@ public final class MigrationWorkspaceService {
 
     public MigrationWorkspaceState scan(Path workspaceRoot) throws IOException {
         currentRoot = workspaceRoot.normalize().toAbsolutePath();
-        Path legacy = MigrationPaths.legacyDir(currentRoot);
-        Path target = MigrationPaths.targetDir(currentRoot);
+        Path legacyDir = MigrationPaths.legacyDir(currentRoot);
+        Path targetDir = MigrationPaths.targetDir(currentRoot);
 
-        FlowComparisonService.FlowComparisonResult flow =
-                flowComparison.compare(legacy, target);
+        FlowComparisonService.FlowComparisonResult flow = flowComparison.compare(legacyDir, targetDir);
         GoldenManifest manifest = manifestLoader.load(currentRoot);
 
         int goldenTotal = manifest.cases().size();
@@ -39,16 +37,11 @@ public final class MigrationWorkspaceService {
 
         double accuracy = goldenTotal > 0 ? 100.0 * goldenPass / goldenTotal : 0;
 
-        List<MigrationStepView> steps = buildSteps(legacy, target, flow, manifest, goldenPass, goldenTotal, accuracy, "");
+        List<MigrationStepView> steps = buildSteps(
+                resolveDir(legacyDir), resolveDir(targetDir), flow, manifest, goldenPass, goldenTotal, accuracy, "");
 
         lastState = new MigrationWorkspaceState(
                 currentRoot,
-                Files.isDirectory(legacy) ? legacy : null,
-                Files.isDirectory(target) ? target : null,
-                flow.cobolSourceFiles(),
-                countJavaFiles(target),
-                flow.javaTypeCount(),
-                flow.warningCount(),
                 flow.warnings(),
                 flow.javaTypes(),
                 manifest,
@@ -65,14 +58,12 @@ public final class MigrationWorkspaceService {
         if (currentRoot == null) {
             throw new IllegalStateException(MigrationCopy.WORKSPACE_NOT_OPEN);
         }
-        Path target = MigrationPaths.targetDir(currentRoot);
-        MavenTestRunner.MavenTestResult result = testRunner.runTests(target, 15);
+        Path legacyDir = MigrationPaths.legacyDir(currentRoot);
+        Path targetDir = MigrationPaths.targetDir(currentRoot);
+        MavenTestRunner.MavenTestResult result = testRunner.runTests(targetDir, 15);
 
         MigrationWorkspaceState base = lastState;
-        FlowComparisonService.FlowComparisonResult flow =
-                flowComparison.compare(
-                        base.legacyPath() != null ? base.legacyPath() : MigrationPaths.legacyDir(currentRoot),
-                        target);
+        FlowComparisonService.FlowComparisonResult flow = flowComparison.compare(legacyDir, targetDir);
 
         int total = result.total() > 0 ? result.total() : base.goldenManifest().cases().size();
         int passed = result.total() > 0 ? result.passed() : base.testsPassed();
@@ -80,8 +71,8 @@ public final class MigrationWorkspaceService {
 
         GoldenManifest manifest = base.goldenManifest();
         List<MigrationStepView> steps = buildSteps(
-                base.legacyPath(),
-                Files.isDirectory(target) ? target : null,
+                resolveDir(legacyDir),
+                resolveDir(targetDir),
                 flow,
                 manifest,
                 passed,
@@ -91,12 +82,6 @@ public final class MigrationWorkspaceService {
 
         lastState = new MigrationWorkspaceState(
                 currentRoot,
-                base.legacyPath(),
-                Files.isDirectory(target) ? target : null,
-                flow.cobolSourceFiles(),
-                countJavaFiles(target),
-                flow.javaTypeCount(),
-                flow.warningCount(),
                 flow.warnings(),
                 flow.javaTypes(),
                 manifest,
@@ -109,23 +94,12 @@ public final class MigrationWorkspaceService {
         return lastState;
     }
 
-    public MigrationWorkspaceState getLastState() {
-        return lastState;
-    }
-
     public Path getCurrentRoot() {
         return currentRoot;
     }
 
-    private static int countJavaFiles(Path target) throws IOException {
-        if (!Files.isDirectory(target)) return 0;
-        int n = 0;
-        try (var walk = Files.walk(target)) {
-            for (Path p : walk.toList()) {
-                if (Files.isRegularFile(p) && p.toString().endsWith(SourceExtensions.JAVA)) n++;
-            }
-        }
-        return n;
+    private static Path resolveDir(Path path) {
+        return Files.isDirectory(path) ? path : null;
     }
 
     private static List<MigrationStepView> buildSteps(
@@ -138,22 +112,23 @@ public final class MigrationWorkspaceService {
             double accuracy,
             String testLog) {
 
+        int javaTypeCount = flow.javaTypes().size();
         List<MigrationStepView> steps = new ArrayList<>();
         steps.add(step(MigrationStepKind.LEGACY_LINKED,
-                legacy != null && Files.isDirectory(legacy) ? StepStatus.OK : StepStatus.ERROR,
+                legacy != null ? StepStatus.OK : StepStatus.ERROR,
                 legacy != null ? legacy.getFileName().toString() : MigrationCopy.missingDir(MigrationPaths.LEGACY_DIR)));
 
         steps.add(step(MigrationStepKind.TARGET_LINKED,
-                target != null && Files.isDirectory(target) ? StepStatus.OK : StepStatus.ERROR,
+                target != null ? StepStatus.OK : StepStatus.ERROR,
                 target != null ? target.getFileName().toString() : MigrationCopy.missingDir(MigrationPaths.TARGET_DIR)));
 
-        StepStatus analyze = (flow.cobolSourceFiles() > 0 || flow.javaTypeCount() > 0)
+        StepStatus analyze = (flow.cobolSourceFiles() > 0 || javaTypeCount > 0)
                 ? StepStatus.OK : StepStatus.WARNING;
         steps.add(step(MigrationStepKind.ANALYZED, analyze,
-                MigrationCopy.analyzeSummary(flow.cobolSourceFiles(), flow.javaTypeCount())));
+                MigrationCopy.analyzeSummary(flow.cobolSourceFiles(), javaTypeCount)));
 
         StepStatus flowSt = flow.warnings().isEmpty() ? StepStatus.OK
-                : (flow.javaTypeCount() > 0 ? StepStatus.WARNING : StepStatus.ERROR);
+                : (javaTypeCount > 0 ? StepStatus.WARNING : StepStatus.ERROR);
         steps.add(step(MigrationStepKind.FLOW_COMPARED, flowSt,
                 flow.warnings().isEmpty() ? MigrationCopy.NO_FLOW_WARNINGS : flow.warnings().get(0)));
 

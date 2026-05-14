@@ -70,8 +70,8 @@ public final class GoldenManifestLoader {
                     }
                 }
                 boolean hasExpected = Files.isRegularFile(dir.resolve(MigrationPaths.EXPECTED_JSON));
-                GoldenCaseStatus st = hasExpected ? GoldenCaseStatus.UNKNOWN : GoldenCaseStatus.UNKNOWN;
-                cases.add(new GoldenCase(id, program, st, hasExpected ? "" : MigrationPaths.EXPECTED_JSON + " yok"));
+                cases.add(new GoldenCase(id, program, GoldenCaseStatus.UNKNOWN,
+                        hasExpected ? "" : MigrationPaths.EXPECTED_JSON + " yok"));
             });
         }
         return new GoldenManifest(1, cases);
