@@ -13,14 +13,8 @@ A standalone desktop tool that turns Java source code into visual diagrams as yo
 - **Architecture Overview** — shows all classes, their fields and methods at a glance
 - **Live Updates** — diagrams refresh automatically as you edit code (500ms debounce)
 - **File Watching** — point it at any folder and it monitors `.java` file changes from your IDE
-- **Built-in Editor** — split-view with syntax-highlighted code editor, line numbers, and class navigation
-- **Zero Dependencies** — pure Java Swing, no external libraries
-
-## Screenshots
-
-| Flowchart (if/else branching) | Class Dependencies |
-|---|---|
-| Diamond nodes for conditions, loop-back arrows for loops | Arrows showing class-to-class references |
+- **Built-in Editor** — split-view with code editor, line numbers, and class navigation
+- **Modular layout** — `codeflow-core` (parser + model) and `codeflow-swing-ui` (Swing widgets) can be reused from other Maven projects; the sample cart demo lives only in `codeflow-visualizer-app`
 
 ## Requirements
 
@@ -32,10 +26,36 @@ A standalone desktop tool that turns Java source code into visual diagrams as yo
 ```bash
 git clone https://github.com/mustafacebisli/CodeFlowVisualizer.git
 cd CodeFlowVisualizer
-mvn compile exec:java -Dexec.mainClass="com.codeflow.App"
+mvn clean package
+java -jar codeflow-visualizer-app/target/codeflow-visualizer-app-1.0-SNAPSHOT.jar
 ```
 
-The app launches with a sample e-commerce cart codebase (`CartManager`, `DiscountService`, `StockService`, `OrderProcessor`) preloaded in the editor.
+The shaded JAR includes FlatLaf and all modules. The app launches with a sample e-commerce cart (`CartManager`, `DiscountService`, …) bundled only in the **app** module.
+
+## Maven modules
+
+| Module | Role |
+|--------|------|
+| `codeflow-core` | Parser, domain model, `CodeFlow` prefs anchor — **no Swing** |
+| `codeflow-swing-ui` | `DiagramPanel`, renderers, editor, explorer, preferences helper |
+| `codeflow-visualizer-app` | `App`, `MainFrame`, bundled `examples/ecommerce-cart.java` |
+
+Reuse in your project:
+
+```xml
+<dependency>
+  <groupId>com.codeflow</groupId>
+  <artifactId>codeflow-core</artifactId>
+  <version>1.0-SNAPSHOT</version>
+</dependency>
+<dependency>
+  <groupId>com.codeflow</groupId>
+  <artifactId>codeflow-swing-ui</artifactId>
+  <version>1.0-SNAPSHOT</version>
+</dependency>
+```
+
+(`mvn install` on this parent first.)
 
 ## Usage
 
@@ -47,73 +67,31 @@ Write or paste Java code in the right panel. The left panel updates the diagram 
 
 1. Click **"Klasor Izle..."** at the bottom toolbar
 2. Select a folder containing `.java` files
-3. Edit those files in your IDE (Eclipse, IntelliJ, etc.)
-4. The diagram updates automatically when you save
+3. Edit those files in your IDE and save
+4. The diagram updates automatically
 
 ### Diagram Modes
 
-Use the **Mod** dropdown in the left panel to switch between:
-
-| Mode | Description |
-|---|---|
-| **Akis Diyagrami** | Method-level flowchart with branching logic |
-| **Sinif Bagimliliklari** | Class dependency graph |
-| **Genel Bakis** | Overview of all classes, fields, and methods |
-
-### Class & Method Navigation
-
-- **Left panel**: Select class and method from dropdowns to view its flowchart
-- **Right panel**: Select a class from the dropdown to jump to its code
-
-## Project Structure
-
-```
-docs/                           # Project notes (roadmap, context) — not shipped in JAR
-examples/README.md              # Points to bundled demo sources under resources/
-src/main/java/com/codeflow/     # Application source
-├── App.java
-├── examples/
-│   └── ExampleSources.java     # Loads demo text from classpath
-├── model/
-├── parser/
-└── ui/
-src/main/resources/examples/    # Bundled sample Java text (default editor content)
-└── ecommerce-cart.java
-```
-
-See `docs/PROJE_BAGLAMI.md` (Turkish) for a fuller file map.
+Use the **Mod** dropdown in the left panel to switch between flowchart, dependencies, overview, and intra-class calls.
 
 ## How It Works
 
-1. **Parsing**: `JavaSourceParser` uses regex to extract classes, fields, methods, and control flow structures from Java source code
-2. **Tree Building**: Control flow is parsed into a hierarchical `FlowNode` tree — `if/else` creates true/false branches, loops create body branches with loop-back edges
-3. **Rendering**: `FlowchartRenderer` recursively draws the node tree using `Graphics2D`, calculating branch widths and merge points
-4. **Live Updates**: `DocumentListener` (editor) and `WatchService` (file system) detect changes with debouncing to avoid excessive re-renders
+1. **Parsing**: `JavaSourceParser` extracts classes, fields, methods, and control flow
+2. **Tree Building**: Control flow becomes a `FlowNode` tree
+3. **Rendering**: `FlowchartRenderer` (and related panels) draw with `Graphics2D`
+4. **Live Updates**: editor `DocumentListener` and `WatchService` with debouncing
 
 ## Building
 
 ```bash
-# Compile
-mvn compile
-
-# Package as JAR
-mvn package
-
-# Run the JAR
-java -jar target/code-flow-visualizer-1.0-SNAPSHOT.jar
+mvn clean package
+# runnable fat JAR:
+# codeflow-visualizer-app/target/codeflow-visualizer-app-1.0-SNAPSHOT.jar
 ```
 
 ## IDE Integration
 
-### Eclipse
-1. File > Import > Existing Maven Projects
-2. Select the `CodeFlowVisualizer` folder
-3. Run `App.java` as Java Application
-
-### IntelliJ IDEA
-1. File > Open > Select the `CodeFlowVisualizer` folder
-2. IntelliJ auto-detects Maven
-3. Run `App.java`
+Import the **root** folder as an **Existing Maven Project**; Eclipse/IntelliJ will see the multi-module model. Run **`com.codeflow.app.App`** from the `codeflow-visualizer-app` module (classpath must include `codeflow-core` + `codeflow-swing-ui` + FlatLaf), or run the packaged JAR as above.
 
 ## License
 

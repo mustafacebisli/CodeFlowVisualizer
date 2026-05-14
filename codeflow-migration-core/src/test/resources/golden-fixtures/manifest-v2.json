@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "cases": [
+    { "id": "TC001", "program": "DEMO01", "status": "pass" }
+  ]
+}

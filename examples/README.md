@@ -1,9 +1,8 @@
 # Örnek kaynaklar
 
-Bu klasör yalnızca **açıklama** içindir. Uygulama açılışında editöre yüklenen demo metinleri şurada tutulur:
+Bu klasör yalnızca **açıklama** içindir. Varsayılan demo metni uygulama modülünde paketlenir:
 
-`src/main/resources/examples/`
+`codeflow-visualizer-app/src/main/resources/examples/ecommerce-cart.java`
 
-- `ecommerce-cart.java` — Varsayılan sepet / servis örneği (`ExampleSources.loadDefaultCartDemo()`).
-
-Bu dosyalar derleme classpath’inde **kaynak olarak** paketlenir; `com.codeflow` uygulama paketlerinden ayrılmıştır.
+Yükleme: `com.codeflow.app.sample.ExampleSources` (`codeflow-visualizer-app` modülü).  
+`codeflow-core` ve `codeflow-swing-ui` örnek dosyaya **bağımlı değildir**.

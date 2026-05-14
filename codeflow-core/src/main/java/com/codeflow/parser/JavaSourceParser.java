@@ -20,7 +20,7 @@ public class JavaSourceParser {
             "char", "var", "class", "interface", "enum", "record", "extends", "implements", "import",
             "package", "null", "true", "false", "instanceof", "final", "static", "public", "private",
             "protected", "synchronized", "volatile", "transient", "native", "strictfp", "assert",
-            "yield", "break", "continue", "super", "this", "new");
+            "yield", "break", "continue", "super", "this");
 
     public List<CodeClass> parse(String source) {
         return parse(source, null);
@@ -42,6 +42,15 @@ public class JavaSourceParser {
 
     public void resolveCrossFile(List<CodeClass> classes) {
         resolveMethodCalls(classes);
+    }
+
+    /** Birleşik tamponda da ilk {@code package a.b;} satırı (özet için). */
+    public static String extractFirstPackageName(String source) {
+        if (source == null || source.isBlank()) {
+            return "";
+        }
+        Matcher m = Pattern.compile("(?m)^\\s*package\\s+([\\w.]+)\\s*;").matcher(source);
+        return m.find() ? m.group(1).trim() : "";
     }
 
     // --- Class extraction ---
@@ -82,6 +91,9 @@ public class JavaSourceParser {
             } else {
                 cc.getFields().addAll(extractFields(body, Collections.emptySet()));
                 cc.getMethods().addAll(extractMethods(body, cc.getName()));
+                if (kind == CodeClass.Kind.RECORD) {
+                    cc.getMethods().addAll(extractRecordCompactConstructors(body, cc.getName()));
+                }
             }
             result.add(cc);
         }
@@ -172,6 +184,28 @@ public class JavaSourceParser {
             fields.add(new CodeClass.CodeField(name, type, isFinal));
         }
         return fields;
+    }
+
+    /**
+     * {@code record R(...)} içindeki compact constructor: {@code public R \{}}
+     * (parantezsiz gövde); standart kanonik kurucu {@link #extractMethods} ile ayrıdır.
+     */
+    private List<CodeMethod> extractRecordCompactConstructors(String body, String recordName) {
+        List<CodeMethod> methods = new ArrayList<>();
+        Pattern p = Pattern.compile(
+                "(?m)^\\s*(?:public|private|protected)\\s+" + Pattern.quote(recordName) + "\\s*\\{");
+        Matcher m = p.matcher(body);
+        while (m.find()) {
+            int brace = body.indexOf('{', m.start());
+            if (brace < 0) continue;
+            String ctorBody = extractBraceBlock(body, brace);
+            String label = recordName + " \u2022 compact";
+            CodeMethod cm = new CodeMethod(label, "", "", ctorBody != null ? ctorBody : "");
+            cm.getFlowNodes().addAll(buildFlowTree(cm.getBody()));
+            cm.getMethodCalls().addAll(extractMethodCalls(cm.getBody(), recordName, label));
+            methods.add(cm);
+        }
+        return methods;
     }
 
     // --- Method extraction ---

@@ -9,24 +9,18 @@ Bu dosya, sohbetlerde tekrar tekrar açıklama gerektirmemesi için projenin ne 
 ## Teknoloji ve kısıtlar
 
 - **Java 17+**, **Maven 3.6+**
-- **Sıfır harici kütüphane** — yalnızca Java Swing, `Graphics2D`
-- Ana sınıf: `com.codeflow.App`
-- Artifact: `code-flow-visualizer-1.0-SNAPSHOT` (JAR `mvn package` ile)
+- **FlatLaf** (tema); çekirdek `codeflow-core` Swing içermez
+- Bağımsız uygulama girişi: `com.codeflow.app.App` (`codeflow-visualizer-app`)
+- Dağıtım JAR: `codeflow-visualizer-app/target/codeflow-visualizer-app-1.0-SNAPSHOT.jar` (`mvn package`, shade)
 
 ## Çalıştırma
 
 ```bash
-mvn compile exec:java -Dexec.mainClass="com.codeflow.App"
+mvn clean package
+java -jar codeflow-visualizer-app/target/codeflow-visualizer-app-1.0-SNAPSHOT.jar
 ```
 
-veya paketlenmiş JAR:
-
-```bash
-mvn package
-java -jar target/code-flow-visualizer-1.0-SNAPSHOT.jar
-```
-
-Açılışta örnek e-ticaret sepet kodu (CartManager, DiscountService, StockService, OrderProcessor) editörde yüklü gelir; kaynak metin `src/main/resources/examples/ecommerce-cart.java`, yükleme `com.codeflow.examples.ExampleSources`.
+Açılışta örnek e-ticaret sepet kodu yalnızca **uygulama** modülünde yüklenir: `codeflow-visualizer-app/src/main/resources/examples/ecommerce-cart.java`, sınıf `com.codeflow.app.sample.ExampleSources`. Kütüphane modülleri (`codeflow-core`, `codeflow-swing-ui`) örneğe bağımlı değildir.
 
 ## Kullanım modları
 
@@ -47,28 +41,24 @@ Navigasyon: solda sınıf/metot dropdown’ları (akış için), sağda sınıfa
 
 | Klasör | İçerik |
 |--------|--------|
-| `docs/` | Proje bağlamı, yol haritası (`PROJE_BAGLAMI.md`, `YOL_HARITASI.md`) |
-| `src/main/java/com/codeflow/` | Uygulama kaynağı (`App`, `model`, `parser`, `ui`, `examples` yükleyici) |
-| `src/main/resources/examples/` | Paketlenmiş örnek Java metni (derlenmez; editörde gösterilir) |
+| `docs/` | Proje bağlamı, yol haritası |
+| `codeflow-core/` | Parser + model (Swing yok) |
+| `codeflow-swing-ui/` | Diyagram / editör Swing bileşenleri |
+| `codeflow-visualizer-app/` | `App`, `MainFrame`, örnek `resources/examples/` |
 
-## Paket / dosya yapısı (`src/main/java/com/codeflow/`)
+## Modül / dosya özeti
 
-| Dosya | Rol |
+| Konum | Rol |
 |-------|-----|
-| `App.java` | Giriş |
-| `examples/ExampleSources.java` | Classpath’ten örnek dosya okuma |
-| `parser/JavaSourceParser.java` | Regex tabanlı Java parse (sınıf, alan, metot, kontrol akışı) |
-| `parser/FileWatcher.java` | Dosya sistemi izleme |
-| `model/CodeClass.java`, `CodeMethod.java` | Model |
-| `model/FlowNode.java` | Akış ağacı (if/else dalları, döngü gövdesi + loop-back) |
-| `model/MethodCall.java` | Metot çağrısı referansı |
-| `model/DependencyGraph.java` | Sınıf bağımlılık grafiği üretimi |
-| `ui/MainFrame.java` | Ana pencere, split |
-| `ui/CodeEditorPanel.java` | Kod editörü (sözdizimi, satır numarası, navigasyon) |
-| `ui/DiagramPanel.java` | Diyagram alanı |
-| `ui/FlowchartRenderer.java` | Akış çizimi (dal genişlikleri, birleşim noktaları) |
-| `ui/DependencyRenderer.java` | Bağımlılık çizimi |
-| `ui/OverviewRenderer.java` | Mimari genel bakış çizimi |
+| `codeflow-core/.../CodeFlow.java` | `Preferences` düğüm kökü (işaret sınıfı) |
+| `codeflow-core/.../parser/JavaSourceParser.java` | Regex tabanlı parse |
+| `codeflow-core/.../parser/FileWatcher.java` | Klasör izleme |
+| `codeflow-core/.../model/*` | `CodeClass`, `FlowNode`, bağımlılık modeli |
+| `codeflow-swing-ui/.../ui/*` | `DiagramPanel`, renderer’lar, editör, gezgin |
+| `codeflow-swing-ui/.../util/AppPreferences.java` | Kalıcı tercihler |
+| `codeflow-visualizer-app/.../app/App.java` | Masaüstü giriş |
+| `codeflow-visualizer-app/.../app/MainFrame.java` | Ana pencere, izleme, örnek yükleme |
+| `codeflow-visualizer-app/.../app/sample/ExampleSources.java` | Yalnızca uygulama modülü örneği |
 
 ## Nasıl çalışıyor? (kısa)
 

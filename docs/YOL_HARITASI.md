@@ -89,9 +89,9 @@ Aşağıdakiler **regex tabanında kısmen** mümkün olsa da üretim kalitesi i
 - ❌ Generik / iç sınıf / anonim sınıf sınırları
 
 ### 4.4 Diğer yapılar
-- ❌ `record` compact constructor / bileşen erişimi ayrıntısı
-- ❌ `enum` gövdesinde metot / iç enum (şu an sabit + kalan gövde ayrımı sınırlı)
-- ❌ Modül / paket düzeyi özet
+- 🟨 `record` **compact constructor** (`public R { ... }`) — akış + çağrı listesi (`JavaSourceParser.extractRecordCompactConstructors`); bileşen erişimi ayrı düğüm değil
+- 🟨 `enum` gövdesinde metot — kalan gövdede `extractMethods`; iç içe `enum` / özel sözdizimi sınırlı
+- 🟨 Modül / paket düzeyi özet — diyagram üst bilgisinde paket ipucu (`JavaSourceParser.extractFirstPackageName`, `DiagramPanel.updateData`); tam modül grafiği yok
 
 ---
 
@@ -113,12 +113,12 @@ Hedef: diyagramda **manuel** `if` ekleme, **ok çekme**, sonra **kod üretimi ve
 
 - ✅ Yakınlaştırma (akış görünümü) — *mevcut*
 - ❌ **Pinch-to-zoom** (trackpad; Swing’de yerel jest — genelde JNI / platform API veya harici kütüphane)
-- ❌ **Sürükle-bırak** ile dosya / klasör açma (`.java` veya proje kökü)
-- ❌ Satır içi hata / uyarı işaretleme (parse hatalarında)
+- ❌ **Sürükle-bırak** — kaldırıldı; klasör için **Klasör İzle** kullanılır
+- 🟨 Parse uyarısı — sınıf yokken editör başlığında kısa metin (`CodeEditorPanel.setParseHint`); satır içi dalgalı çizgi yok
 - 🟨 Sözdizimi vurgulama — *kısmen: tek renk metin; tam lexer / renklendirme yok*
 - ❌ Tam **syntax highlighting** (Lexer tabanlı veya editör bileşeni değişimi)
 - ✅ Satır numaraları — *mevcut*
-- ❌ Arama / değiştir, çoklu imleç
+- ✅ Arama / değiştir — Ctrl+F (`CodeEditorPanel` + `EditorFindDialog`); çoklu imleç yok
 
 ---
 
@@ -127,7 +127,7 @@ Hedef: diyagramda **manuel** `if` ekleme, **ok çekme**, sonra **kod üretimi ve
 1. **AST geçişi** (JavaParser veya JDT) — tüm “syntax listesi” maddelerinin temeli.
 2. **Parse hata raporu** — hangi satırda model üretilemedi (kullanıcı güveni).
 3. **Otomatik test** — altın örnek `.java` dosyaları + beklenen düğüm sayısı / türü.
-4. **Ayarlar dosyası** — zoom, son izlenen klasör, pencere boyutu.
+4. ✅ **Ayarlar / kalıcı tercihler** — `AppPreferences` (`java.util.prefs`): pencere konumu/boyutu, split bölmeleri, akış zoom, son izlenen klasör (`MainFrame` kapanışta kayıt).
 5. **CLI / headless** — `java -jar … --input src --export out.png` (CI / dokümantasyon).
 6. **Lisans / üçüncü parti** — AST kütüphanesi eklenirse bağımlılık ve dağıtım notu.
 
@@ -140,4 +140,4 @@ Hedef: diyagramda **manuel** `if` ekleme, **ok çekme**, sonra **kod üretimi ve
 
 ---
 
-*Son güncelleme: 2026-05-03 — 4.2 / 4.3 kısmi parser iyileştirmeleri eklendi.*
+*Son güncelleme: 2026-05-09 — Maven modülleri (`codeflow-core`, `codeflow-swing-ui`, `codeflow-visualizer-app`); sürükle-bırak kaldırıldı; örnek yalnızca uygulama modülünde.*
